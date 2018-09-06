@@ -72,6 +72,12 @@ function result_struct = lineSegmentIntersect(XY1,XY2, infinite_line)
 %%% Argument check.
 %-------------------------------------------------------------------------------
 
+% HACK, in box_proposal.m   first pt maybe VP3, might be nan, represents a vertical line
+if isnan(XY2(1))
+    XY2(1:2) = [XY2(3) XY2(4)+1000];
+end
+
+
 validateattributes(XY1,{'numeric'},{'2d','finite'});
 validateattributes(XY2,{'numeric'},{'2d','finite'});
 

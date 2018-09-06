@@ -3,8 +3,14 @@ function hit_pt = seg_hit_boundary(line_1, line_segment2)
 % compute the intersection of line_1 (from start to end) with line segments (not infinite line). if not found, return [-1 -1]
  %  the second line segments are either horizontal or vertical.   a simplified version of lineSegmentIntersect
    
+    % HACK, in box_proposal.m   first pt maybe VP3, might be nan, represents a vertical line
+    if isnan(line_1(1))
+        line_1(1:2) = [line_1(3) line_1(4)+1000];
+    end 
+ 
     pt_start = line_1(1:2);
     pt_end = line_1(3:4);
+    
     
     boundary_bgn = line_segment2(1:2);
     boundary_end = line_segment2(3:4);    

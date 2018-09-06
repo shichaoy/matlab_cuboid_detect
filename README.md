@@ -3,7 +3,7 @@
 Matlab code to detect cuboid object. Currently only cuboid proposal generation is included.
 Proposal scoring will be updated later.
 
-**Authors:** [Shichao Yang](http://www.frc.ri.cmu.edu/~syang/) shichaoy@andrew.cmu.edu
+**Authors:** [Shichao Yang](http://www.frc.ri.cmu.edu/~syang/), shichaoy@andrew.cmu.edu
 
 **Related Paper:**
 

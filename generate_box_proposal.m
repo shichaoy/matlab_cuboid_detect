@@ -12,8 +12,9 @@ whether_sample_bbox_height = false;   % sample object height as raw detection mi
 whether_sample_roll_pitch = false;    % sample camera roll pitch in case don't have/want ground truth camera pose
 whether_sample_cam_height = false;    % sample camera height. top fixed, sample down.
 
-consider_config_2 = true;
-consider_config_3 = false;
+consider_config_1 = true;  % see three faces   false  true
+consider_config_2 = true;  % see two faces
+consider_config_3 = false;  % see one face   not perfect, mainly for kitti vertical obj.
 
 
 %% start processing
@@ -140,9 +141,9 @@ for object_id = 1:size(obj_bbox_coors,1)
             obj_yaw_samples = yaw_init-45/180*pi:6/180*pi:yaw_init+45/180*pi;  % search an object raw range of 90
 
             %% configuration one  can see three faces
+            if (consider_config_1)
             all_box_corners_2d_conf1 =[];            
-            figure_id_1 = 60;
-            
+            figure_id_1 = 60;            
             for yaw_sample_id = 1:size(obj_yaw_samples,2)
                 yaw_esti = obj_yaw_samples(yaw_sample_id);
                 [vp_1,vp_2,vp_3] = getVanishingPoints(Kalib, invR, yaw_esti); % for object x y z  axis
@@ -213,7 +214,7 @@ for object_id = 1:size(obj_bbox_coors,1)
                         if (print_details) disp('Configuration one fails at edge 3-4/3-2, too short'); end;  continue;
                     end
                     % compute first bottom points
-                    corner_5_down = seg_hit_boundary([corner_3_top(1) corner_3_top(2)+400 corner_3_top],[left_x_raw down_y_expan right_x_raw down_y_expan]);
+                    corner_5_down = seg_hit_boundary([vp_3 corner_3_top],[left_x_raw down_y_expan right_x_raw down_y_expan]); % vp_3 is vertial in kitti
                     if(whether_plot_detail_img && plot_cube_generate_detail)
                         figure(figure_id_1);plot([corner_3_top(1) corner_5_down(1)],[corner_3_top(2) corner_5_down(2)],'b','Linewidth',2.5);
                     end
@@ -224,7 +225,7 @@ for object_id = 1:size(obj_bbox_coors,1)
                         if (print_details) disp('Configuration one fails at edge 3-5, too short'); end;  continue;
                     end
                     % don't need to check bottom points, it actually includes some other configurations...
-                    intersect_result=lineSegmentIntersect([vp_2 corner_5_down],[corner_2_top(1) corner_2_top(2)+400 corner_2_top],true);
+                    intersect_result=lineSegmentIntersect([vp_2 corner_5_down],[vp_3 corner_2_top],true);
                     corner_6_down=[intersect_result.intMatrixX intersect_result.intMatrixY];
                     if(whether_plot_detail_img && plot_cube_generate_detail)
                         figure(figure_id_1);plot([corner_6_down(1) corner_2_top(1)],[corner_6_down(2) corner_2_top(2)],'b','Linewidth',2.5);
@@ -237,7 +238,7 @@ for object_id = 1:size(obj_bbox_coors,1)
                     if ( (norm(corner_6_down-corner_2_top)<shorted_edge_thre) || ((norm(corner_6_down-corner_5_down)<shorted_edge_thre)) )
                         if (print_details) disp('Configuration one fails at edge 6-5/6-2, too short'); end; continue;
                     end
-                    intersect_result=lineSegmentIntersect([vp_1 corner_6_down],[corner_1_top(1) corner_1_top(2)+400 corner_1_top],true);
+                    intersect_result=lineSegmentIntersect([vp_1 corner_6_down],[vp_3 corner_1_top],true);
                     corner_7_down=[intersect_result.intMatrixX intersect_result.intMatrixY];
                     if(whether_plot_detail_img && plot_cube_generate_detail)
                         figure(figure_id_1);plot([corner_7_down(1) corner_1_top(1)],[corner_7_down(2) corner_1_top(2)],'b--','Linewidth',2.5);                
@@ -275,10 +276,10 @@ for object_id = 1:size(obj_bbox_coors,1)
                 end
             end
 
-            all_box_corners_2d_conf1_raw = [all_box_corners_2d_conf1_raw; all_box_corners_2d_conf1];
+            all_box_corners_2d_conf1_raw = [all_box_corners_2d_conf1_raw; all_box_corners_2d_conf1];            
+            end
 
-
-            %% configuration one  can see two faces
+            %% configuration two  can see two faces
             if (consider_config_2)
             all_box_corners_2d_conf2 =[];   
             figure_id_3 = 70;
@@ -293,7 +294,7 @@ for object_id = 1:size(obj_bbox_coors,1)
                     if(whether_plot_detail_img)
                         figure(figure_id_3);imshow(rgb_img);title('Config 2 Detected 2D object --> 3D');hold on;
                         rectangle('Position',[left_x_raw,top_y_raw,right_x_raw-left_x_raw,down_y_expan-top_y_raw],'EdgeColor','c','LineWidth',1); 
-                        text(obj_bbox_coors(object_id,1)+5,obj_bbox_coors(object_id,2)-10, sprintf('%s---%.2f',obj_bbox_class{1},obj_bbox_coors(object_id,5)))
+%                         text(obj_bbox_coors(object_id,1)+5,obj_bbox_coors(object_id,2)-10, sprintf('%s---%.2f',obj_bbox_class{1},obj_bbox_coors(object_id,5)))
                     end
 
                     corner_1_top = sample_top_pts(:,sample_top_pt_id)';
@@ -352,8 +353,8 @@ for object_id = 1:size(obj_bbox_coors,1)
                     if ( (norm(corner_3_top-corner_4_top)<shorted_edge_thre) || ((norm(corner_4_top-corner_1_top)<shorted_edge_thre)) )
                         if (print_details) disp('Configuration two fails at edge 3-4/4-1, too short'); end; continue;
                     end
-
-                    corner_5_down = seg_hit_boundary([corner_3_top(1) corner_3_top(2)+400 corner_3_top],[left_x_raw down_y_expan right_x_raw down_y_expan]);  % vp_3 is vertial in kitti
+                    
+                    corner_5_down = seg_hit_boundary([vp_3 corner_3_top],[left_x_raw down_y_expan right_x_raw down_y_expan]); % vp_3 is vertial in kitti
                     if(whether_plot_detail_img && plot_cube_generate_detail)            
                         figure(figure_id_3);plot([corner_3_top(1) corner_5_down(1)],[corner_3_top(2) corner_5_down(2)],'b','Linewidth',2.5);
                     end
@@ -364,7 +365,7 @@ for object_id = 1:size(obj_bbox_coors,1)
                         if (print_details) disp('Configuration two fails at edge 3-5, too short');  end; continue;
                     end
 
-                    intersect_result=lineSegmentIntersect([vp_2 corner_5_down],[corner_2_top(1) corner_2_top(2)+400 corner_2_top],true);
+                    intersect_result=lineSegmentIntersect([vp_2 corner_5_down],[vp_3 corner_2_top],true);
                     corner_6_down=[intersect_result.intMatrixX intersect_result.intMatrixY];
                     if(whether_plot_detail_img && plot_cube_generate_detail)
                         figure(figure_id_3);plot([corner_6_down(1) corner_2_top(1)],[corner_6_down(2) corner_2_top(2)],'b','Linewidth',2.5);                
@@ -376,8 +377,8 @@ for object_id = 1:size(obj_bbox_coors,1)
                     if ( (norm(corner_6_down-corner_2_top)<shorted_edge_thre) || ((norm(corner_6_down-corner_5_down)<shorted_edge_thre)) )
                         if (print_details) disp('Configuration one fails at edge 6-5/6-2, too short'); end; continue;
                     end
-
-                    intersect_result=lineSegmentIntersect([vp_1 corner_6_down],[corner_1_top(1) corner_1_top(2)+400 corner_1_top],true);
+                    
+                    intersect_result=lineSegmentIntersect([vp_1 corner_6_down],[vp_3 corner_1_top],true);
                     corner_7_down=[intersect_result.intMatrixX intersect_result.intMatrixY];
                     if(whether_plot_detail_img && plot_cube_generate_detail)
                         figure(figure_id_3);plot([corner_7_down(1) corner_1_top(1)],[corner_7_down(2) corner_1_top(2)],'b--','Linewidth',2.5);
@@ -415,11 +416,10 @@ for object_id = 1:size(obj_bbox_coors,1)
             end
             
             all_box_corners_2d_conf2_raw = [all_box_corners_2d_conf2_raw;all_box_corners_2d_conf2];
-
             end
 
 
-            %% configuration three  can see two faces
+            %% configuration three  can see one faces
             if (consider_config_3)
             all_box_corners_2d_conf5 =[];    
             figure_id_5 = 70;
@@ -430,10 +430,10 @@ for object_id = 1:size(obj_bbox_coors,1)
 
                 % VP1 should lie inside the cube
                 if (~check_inside_box( vp_1,[left_x_raw top_y_raw], [right_x_raw down_y_expan]))
-    %                         [vp_1  left_x_raw top_y_raw right_x_raw down_y_expan]
+%                     [vp_1  left_x_raw top_y_raw right_x_raw down_y_expan]
                     if (print_details) disp('Configuration five, vp1 outside image'); end;  continue;
                 else
-    %                 fprintf('vp_1 inside box %d \n',frame_index);
+%                     fprintf('vp_1 inside box %d \n',frame_index);
                 end
                 % find VP supported edges, boundary edges, angles and so on.  To evaluate cuboid model.
                 if (whether_evaluate_cuboid)
@@ -501,7 +501,7 @@ for object_id = 1:size(obj_bbox_coors,1)
                         config_5_good=false; if (print_details) disp('Configuration five fails at corner 3, outside image'); end;  continue;
                     end
 
-                    intersect_result = lineSegmentIntersect([corner_2_top(1) corner_2_top(2)+400 corner_2_top],[vp_1 corner_7_down],true);
+                    intersect_result = lineSegmentIntersect([vp_3 corner_2_top],[vp_1 corner_7_down],true);
                     corner_6_down=[intersect_result.intMatrixX intersect_result.intMatrixY];
                     if(whether_plot_detail_img && plot_cube_generate_detail)
                         figure(figure_id_5);plot([corner_6_down(1) corner_2_top(1)],[corner_6_down(2) corner_2_top(2)],'b--','Linewidth',2.5);
@@ -511,7 +511,7 @@ for object_id = 1:size(obj_bbox_coors,1)
                         config_5_good=false; if (print_details) disp('Configuration five fails at corner 6, outside image'); end;  continue;
                     end
 
-                    intersect_result = lineSegmentIntersect([corner_3_top(1) corner_3_top(2)+400 corner_3_top],[vp_1 corner_8_down],true);
+                    intersect_result = lineSegmentIntersect([vp_3 corner_3_top],[vp_1 corner_8_down],true);
                     corner_5_down=[intersect_result.intMatrixX intersect_result.intMatrixY];
                     if(whether_plot_detail_img && plot_cube_generate_detail)
                         figure(figure_id_5);plot([corner_5_down(1) corner_3_top(1)],[corner_5_down(2) corner_3_top(2)],'b--','Linewidth',2.5);
@@ -531,8 +531,8 @@ for object_id = 1:size(obj_bbox_coors,1)
                     end
                 end
             end
+            
             all_box_corners_2d_conf3_raw = [all_box_corners_2d_conf3_raw;all_box_corners_2d_conf5];
-
             end
 
         end
@@ -540,7 +540,9 @@ for object_id = 1:size(obj_bbox_coors,1)
         end
         
         %% stack all cuboids of different configurations together
-        all_box_corners_2ds = [all_box_corners_2ds; all_box_corners_2d_conf1_raw];
+        if (consider_config_1)
+            all_box_corners_2ds = [all_box_corners_2ds; all_box_corners_2d_conf1_raw];
+        end
         if (consider_config_2)            
             all_box_corners_2ds = [all_box_corners_2ds;all_box_corners_2d_conf2_raw];
         end
