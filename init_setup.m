@@ -4,3 +4,5 @@ addpath(genpath(strcat(pwd,'/utils')));
 addpath(genpath(strcat(pwd,'/utils/geometry_util')));
 addpath(genpath(strcat(pwd,'/utils/line_utils')));
 addpath(genpath(strcat(pwd,'/utils/common_utils')));
+addpath(genpath(strcat(pwd,'/utils/draw_utils')));
+addpath(genpath(strcat(pwd,'/utils/cuboid_utils')));

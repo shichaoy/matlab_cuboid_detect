@@ -1,5 +1,6 @@
 function [euler] = quat_to_EulerZYX(quat)
-	
+% [qx qy qz qw] --> [roll, pitch, yaw] 
+
 	qx = quat(1);
 	qy = quat(2);
 	qz = quat(3);

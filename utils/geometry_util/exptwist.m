@@ -1,5 +1,5 @@
 function T = exptwist( twist )
-% 6*1 or 1*6 twist rpyxyz
+% exponential map  6*1 or 1*6 twist rpyxyz   to transformation matrix
 
     omega = twist(1:3);
     

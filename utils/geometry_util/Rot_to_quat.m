@@ -1,7 +1,7 @@
 function [ quat ] = Rot_to_quat( R )
-% output is [qx qy qz qw]
+% rotation matrix --> [qx qy qz qw]
 
-% if case corner case, see  http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
+% for corner case, see  http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
 
     quat = zeros(1,4);
     quat(4) = 0.5 * sqrt(1 + R(1,1) + R(2,2) + R(3,3));

@@ -1,11 +1,13 @@
 function hit_pt = seg_hit_boundary(line_1, line_segment2)
-% line_1  1*4  line_segment2 1*4  the output is float value
-% compute the intersection of line_1 (from start to end) with line segments (not infinite line). if not found, return [-1 -1]
- %  the second line segments are either horizontal or vertical.   a simplified version of lineSegmentIntersect
-   
-    % HACK, in box_proposal.m   first pt maybe VP3, might be nan, represents a vertical line
+% line_1  1*4  line_segment2 1*4  the output is float point.
+% compute the intersection of line_1 (directional infinite line along start to end) with line segments (not infinite line). 
+% if not found, return [-1 -1]
+% the second line segments are either horizontal or vertical (rectangle boundary).   a simplified version of lineSegmentIntersect
+
+ 
+    % HACK, in box_proposal.m   first pt of line_1 maybe VP3, might be nan. in this case, line_1 means a vertical line
     if isnan(line_1(1))
-        line_1(1:2) = [line_1(3) line_1(4)+1000];
+        line_1(1:2) = [line_1(3) line_1(4)+1000]; % vertical downward line
     end 
  
     pt_start = line_1(1:2);

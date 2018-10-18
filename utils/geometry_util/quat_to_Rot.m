@@ -1,4 +1,5 @@
 function rot = quat_to_Rot(quat)
+% [qx qy qz qw] --> rotation matrix
 	
 	qx = quat(1);
 	qy = quat(2);

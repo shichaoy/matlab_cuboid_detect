@@ -1,5 +1,6 @@
 function quat = EulerZYX_to_quat(euler_angle)
-% intput: [roll, pitch, yaw] -->  [qx qy qz qw]
+% [roll, pitch, yaw] -->  [qx qy qz qw]
+
 	roll = euler_angle(1);
 	pitch = euler_angle(2);
 	yaw = euler_angle(3);

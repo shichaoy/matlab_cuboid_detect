@@ -1,5 +1,6 @@
 function [ euler ] = Rot_to_EulerZYX( R )
-% output is [roll pitch yaw]
+% rotation matrix --> [roll, pitch, yaw] 
+
 pitch = asin(-R(3,1));
 
 if (abs(pitch - pi/2) < 1.0e-3) 

@@ -1,4 +1,5 @@
 function R = EulerZYX_to_Rot(euler_angle)
+% [roll, pitch, yaw] -->  rotation matrix
 
 roll = euler_angle(1);
 pitch = euler_angle(2);

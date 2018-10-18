@@ -1,6 +1,6 @@
 function result_struct = lineSegmentIntersect(XY1,XY2, infinite_line)
 %  XY1 and XY2 are N1x4 and N2x4 matrices  Each row is of the form [x1 y1 x2 y2]
-%  infinite_line true or false  whether treat as infinite lines
+%  infinite_line (true /false) indicating wheather treat as infinite lines or line segments
 
 
 %LINESEGMENTINTERSECT Intersections of line segments. 
