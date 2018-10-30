@@ -1,6 +1,6 @@
 function   all_vp_bound_edge_angles = VP_support_edge_infos(VPs,edge_mid_pts,edge_angles,vp_support_angle_thres)
 % VPs 3*2  three VP   edge_mid_pts: n*2  edge_angles: n*1 vp_support_angle_thres 1*2
-% output: 3*2  each row is a VP's two supported edges' angle.  if not found, nan for that entry
+% output: 3*2  each row is a VP's two boundary supported edges' angle.  if not found, nan for that entry
 % [edge_angles all_vp_bound_edge_angles] are all [-pi, pi]
 
     if (size(edge_mid_pts,1)>0)    

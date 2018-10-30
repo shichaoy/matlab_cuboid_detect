@@ -1,3 +1,5 @@
+% main file to detect 3D cuboid from single image. Require input of 2D bouding box and camera poses.
+
 clear;
 close all;
 
@@ -47,7 +49,7 @@ end
 % read detected long edges   I used my c++ lsd or edlines
 if (whether_evaluate_cuboid)
     gray_img = rgb2gray(rgb_img);
-    all_lines_raw = importdata([data_edge_dir sprintf('%04d',frame_index) '_edge.txt']);  % [x1 y1 x2 y2]
+    all_lines_raw = importdata([data_edge_dir sprintf('%04d',frame_index) '_edge.txt']);  % [x1 y1 x2 y2] raw txt is c++ index
     all_lines_raw = all_lines_raw+1; % matlab image pixel index start from 1
     all_lines_raw(all_lines_raw(:,1)>img_width,1)=img_width; all_lines_raw(all_lines_raw(:,2)>img_height,2)=img_height;
     all_lines_raw(all_lines_raw(:,3)>img_width,3)=img_width; all_lines_raw(all_lines_raw(:,4)>img_height,4)=img_height;
@@ -74,9 +76,9 @@ end
 euler_angle = Rot_to_EulerZYX(frame_calib_mat.Rot);  % .Rot is camera rotation wrt. ground.
 init_roll = euler_angle(1);
 init_pitch = euler_angle(2);
-if (get_relative_measures)  % actually we can do this later separately
+if (get_relative_measures)
     frame_calib_mat.position(1:2) = 0;  % set x y=0
-    euler_angle(3)=0;      % set yaw = 0
+    euler_angle(3)=0;                   % set yaw = 0
     frame_calib_mat.Rot = EulerZYX_to_Rot(euler_angle);
 end
 camera_yaw = euler_angle(3);
@@ -89,7 +91,7 @@ if (isfield(frame_calib_mat,'position'))  % set x y position
 end
 invT = inv(transToWolrd);
 invR = inv(rotationToWorld);
-Kalib = frame_calib_mat.K;  % internal calibration
+Kalib = frame_calib_mat.K;  % internal calibration c++ index, might need to +1
 invK = inv(Kalib);
 projectionMatrix = Kalib*invT(1:3,:);  % project world coordinate to image
 
@@ -99,7 +101,6 @@ ground_plane_sensor = ground_plane_world*transToWolrd;
 
 %% get object cuboid samples in 3D space through VPs.
 % some parameters
-whether_normalize_two_errors = true; weight_vp_angle = 0.7;   % param of computing error
 vp12_edge_angle_thre = 15; vp3_edge_angle_thre = 10;  % threshod of which line belong to which vp.
 shorted_edge_thre = 20;  % if box edge are too short. box might be too thin. most possibly wrong.        
 
@@ -108,13 +109,33 @@ ObjectSets = cell(size(obj_bbox_coors,1),1);   % saved "cuboid" struct for each 
 for object_id = 1:size(obj_bbox_coors,1)
     left_x_raw = obj_bbox_coors(object_id,1); top_y_raw = obj_bbox_coors(object_id,2); obj_width_raw=obj_bbox_coors(object_id,3); obj_height_raw=obj_bbox_coors(object_id,4);
     right_x_raw=left_x_raw+obj_width_raw; down_y_raw = top_y_raw + obj_height_raw;    
-
-    % can choose to sample poses
-    down_expand_sample_all = [0];        % whether sample 2d bbox height
-    sample_cam_rolls_all = [init_roll];  % whether sample camera roll/pitch
-    sample_cam_pitches_all = [init_pitch];
-    sample_cam_heights_all = [frame_calib_mat.camera_height];  % whether sample camera height
-
+    
+    if (whether_sample_bbox_height)
+        down_expand_sample_ranges = max(min(20, obj_height_raw-90),0);
+        down_expand_sample_ranges = min(down_expand_sample_ranges,img_height-top_y_raw-obj_height_raw);  % should lie inside the image            
+        if (down_expand_sample_ranges>10)  % should within boundaris
+            down_expand_sample_all=[0 round(down_expand_sample_ranges/2) down_expand_sample_ranges];  % if expand large margin, give more samples.            
+        else
+            down_expand_sample_all=[0 down_expand_sample_ranges];
+        end
+    else
+        down_expand_sample_all = [0];
+    end
+    
+    if (whether_sample_roll_pitch)
+        sample_cam_rolls_all = init_roll-deg2rad(12):deg2rad(3):init_roll+deg2rad(12);
+        sample_cam_pitches_all = init_pitch-deg2rad(12):deg2rad(3):init_pitch+deg2rad(12);
+    else
+        sample_cam_rolls_all = [init_roll];
+        sample_cam_pitches_all = [init_pitch];
+    end
+    
+    if (whether_sample_cam_height)
+        sample_cam_heights_all = frame_calib_mat.camera_height-0.4:0.2:frame_calib_mat.camera_height+0.4;
+    else
+        sample_cam_heights_all = [frame_calib_mat.camera_height];
+    end    
+    
     all_configs_errors = [];  % record proposal score/error
     all_box_corners_2ds = []; % proposal corners
     for down_expand_sample = down_expand_sample_all
@@ -326,8 +347,8 @@ for object_id = 1:size(obj_bbox_coors,1)
                             figure(figure_id_1);plot([corner_7_down(1) corner_1_top(1)],[corner_7_down(2) corner_1_top(2)],'b--','Linewidth',2.5);                
                             figure(figure_id_1);plot([corner_7_down(1) corner_6_down(1)],[corner_7_down(2) corner_6_down(2)],'r--','Linewidth',2.5);
                         end
-                        if (~check_inside_box( corner_7_down, [left_x_expan_distmap top_y_expan_distmap], [right_x_expan_distmap down_y_expan_distmap]))
-    %                     if (~check_inside_box( corner_7_down, [left_x_raw top_y_raw], [right_x_raw down_y_expan]))  % 7 must line inside object. hidden point                              
+%                         if (~check_inside_box( corner_7_down, [left_x_expan_distmap top_y_expan_distmap], [right_x_expan_distmap down_y_expan_distmap]))
+                        if (~check_inside_box( corner_7_down, [left_x_raw top_y_raw], [right_x_raw down_y_expan]))  % 7 must line inside object. hidden point                              
                             config_1_good=false; if (print_message_details) disp('Configuration one fails at corner 7, outside image'); end; continue;
                         end
                         if ( (norm(corner_7_down-corner_1_top)<shorted_edge_thre) || ((norm(corner_7_down-corner_6_down)<shorted_edge_thre)) )
@@ -341,7 +362,7 @@ for object_id = 1:size(obj_bbox_coors,1)
                             figure(figure_id_1);plot([corner_8_down(1) corner_7_down(1)],[corner_8_down(2) corner_7_down(2)],'g--','Linewidth',2.5);
                         end
                         if (~check_inside_box( corner_8_down, [left_x_expan_distmap top_y_expan_distmap], [right_x_expan_distmap down_y_expan_distmap]))
-    %                     if (~check_inside_box( corner_8_down, [left_x_raw top_y_raw], [right_x_raw down_y_expan]))                                
+%                         if (~check_inside_box( corner_8_down, [left_x_raw top_y_raw], [right_x_raw down_y_expan]))                                
                             config_1_good=false; if (print_message_details) disp('Configuration one fails at corner 8, outside image');end;  continue;
                         end
                         if ( (norm(corner_8_down-corner_4_top)<shorted_edge_thre) || (norm(corner_8_down-corner_5_down)<shorted_edge_thre) || (norm(corner_8_down-corner_7_down)<shorted_edge_thre) )
@@ -360,7 +381,7 @@ for object_id = 1:size(obj_bbox_coors,1)
 
                                 vps_box_edge_pt_ids = [1 2 8 5;4 1 5 6;4 8 2 6]; % six edges. each row represents two edges [e1_1 e1_2   e2_1 e2_2;...] of one VP
                                 total_angle_diff = box_edge_alignment_angle_error(all_vp_bound_edge_angles,vps_box_edge_pt_ids,box_corners_2d_float);
-                            end                        
+                            end
                             all_configs_error_conf1 = [all_configs_error_conf1;1 vp_1_position yaw_esti sample_top_pt_id sum_dist/obj_diaglength_expan total_angle_diff ...
                                         down_expand_sample rad2deg(sample_cam_roll-init_roll) rad2deg(sample_cam_pitch-init_pitch) sample_cam_height]; % 1 means configuration 1
                         end
@@ -380,7 +401,8 @@ for object_id = 1:size(obj_bbox_coors,1)
                 all_configs_error_conf2 = [];    all_box_corners_2d_conf2 =[];
                 figure_id_3 = 70;
                 % the top four points are generatedly differently, the bottom four are same, except with different visibility
-                for yaw_esti = obj_yaw_samples    
+                for yaw_sample_id = 1:size(obj_yaw_samples,2)
+                    yaw_esti = obj_yaw_samples(yaw_sample_id);
                     [vp_1,vp_2,vp_3] = getVanishingPoints(Kalib, invR, yaw_esti); % for object x y z  axis
                     if (isnan(vp_3(1))) vp_3=[nan nan]; end;
                     
@@ -389,7 +411,6 @@ for object_id = 1:size(obj_bbox_coors,1)
                         all_vp_bound_edge_angles = VP_support_edge_infos([vp_1;vp_2;vp_3],edge_mid_pts,lines_inobj_angles,[vp12_edge_angle_thre vp3_edge_angle_thre]);
                     end
                     for sample_top_pt_id=1:size(sample_top_pts,2)
-            %             yaw_esti = all_conds_scores(end,3);sample_top_pt_id = all_conds_scores(end,4);                        
                         sample_cond = [yaw_esti  sample_top_pt_id];
                         if(plot_cube_generate_detail)
                             figure(figure_id_3);imshow(rgb_img);title('Config 2 Detected 2D object --> 3D');hold on;
@@ -413,8 +434,8 @@ for object_id = 1:size(obj_bbox_coors,1)
                         if(plot_cube_generate_detail)
                             figure(figure_id_3);plot([corner_1_top(1) corner_2_top(1)],[corner_1_top(2) corner_2_top(2)],'r','Linewidth',2.5);        
                         end
-                        config_1_good = (vp_1_position>0);   % at least find one intersection for corner_2
-                        if (~config_1_good)
+                        config_2_good = (vp_1_position>0);   % at least find one intersection for corner_2
+                        if (~config_2_good)
                             if (print_message_details) disp('Configuration two fails at corner 2, outside segment'); end; continue;            
                         end
                         if (norm(corner_1_top-corner_2_top)<shorted_edge_thre)
@@ -432,7 +453,7 @@ for object_id = 1:size(obj_bbox_coors,1)
                             end
                         end
                         if (corner_3_top(1)==-1)
-                            config_1_good = false; if (print_message_details) disp('Configuration two fails at corner 3, outside segment'); end;continue;
+                            config_2_good = false; if (print_message_details) disp('Configuration two fails at corner 3, outside segment'); end;continue;
                         end
                         if (norm(corner_2_top-corner_3_top)<shorted_edge_thre)
                             if (print_message_details) disp('Configuration two fails at edge 2-3, too short'); end;continue;
@@ -453,7 +474,7 @@ for object_id = 1:size(obj_bbox_coors,1)
                         if ( (norm(corner_3_top-corner_4_top)<shorted_edge_thre) || ((norm(corner_4_top-corner_1_top)<shorted_edge_thre)) )
                             if (print_message_details) disp('Configuration two fails at edge 3-4/4-1, too short'); end; continue;
                         end
-
+                        % NOTE! the following code is same as config 1
                         corner_5_down = seg_hit_boundary([vp_3 corner_3_top],[left_x_raw down_y_expan right_x_raw down_y_expan]); % vp_3 is vertial in kitti
                         if(plot_cube_generate_detail)            
                             figure(figure_id_3);plot([corner_3_top(1) corner_5_down(1)],[corner_3_top(2) corner_5_down(2)],'b','Linewidth',2.5);
@@ -567,13 +588,13 @@ for object_id = 1:size(obj_bbox_coors,1)
                         corner_7_down = [right_x_raw down_y_expan];
                         corner_8_down = seg_hit_boundary([corner_7_down vp_2],[left_x_raw top_y_raw left_x_raw down_y_expan]);
                         if (corner_8_down(1)==-1)    % check inside boundary. otherwise edge visibility might be wrong
-                            config_5_good=false;if (print_message_details)  disp('Configuration five fails at corner 8, outside box');end; continue;
+                            config_3_good=false;if (print_message_details)  disp('Configuration five fails at corner 8, outside box');end; continue;
                         end
                     else
                         corner_7_down = [left_x_raw down_y_expan];
                         corner_8_down = seg_hit_boundary([corner_7_down vp_2],[right_x_raw top_y_raw right_x_raw down_y_expan]);
                         if (corner_8_down(1)==-1)    % check inside boundary. otherwise edge visibility might be wrong
-                            config_5_good=false;if (print_message_details)  disp('Configuration five fails at corner 8, outside box');end; continue;
+                            config_3_good=false;if (print_message_details)  disp('Configuration five fails at corner 8, outside box');end; continue;
                         end
                     end
 
@@ -606,7 +627,7 @@ for object_id = 1:size(obj_bbox_coors,1)
                             figure(figure_id_5);plot([corner_3_top(1) corner_4_top(1)],[corner_3_top(2) corner_4_top(2)],'r--','Linewidth',2.5);
                         end
                         if (~check_inside_box( corner_3_top, [left_x_expan_distmap top_y_expan_distmap], [right_x_expan_distmap down_y_expan_distmap]))
-                            config_5_good=false; if (print_message_details) disp('Configuration five fails at corner 3, outside image'); end;  continue;
+                            config_3_good=false; if (print_message_details) disp('Configuration five fails at corner 3, outside image'); end;  continue;
                         end
 
                         intersect_result = lineSegmentIntersect([vp_3 corner_2_top],[vp_1 corner_7_down],true);
@@ -616,7 +637,7 @@ for object_id = 1:size(obj_bbox_coors,1)
                             figure(figure_id_5);plot([corner_6_down(1) corner_7_down(1)],[corner_6_down(2) corner_7_down(2)],'r--','Linewidth',2.5);
                         end
                         if (~check_inside_box( corner_6_down, [left_x_expan_distmap top_y_expan_distmap], [right_x_expan_distmap down_y_expan_distmap]))
-                            config_5_good=false; if (print_message_details) disp('Configuration five fails at corner 6, outside image'); end;  continue;
+                            config_3_good=false; if (print_message_details) disp('Configuration five fails at corner 6, outside image'); end;  continue;
                         end
 
                         intersect_result = lineSegmentIntersect([vp_3 corner_3_top],[vp_1 corner_8_down],true);
@@ -627,7 +648,7 @@ for object_id = 1:size(obj_bbox_coors,1)
                             figure(figure_id_5);plot([corner_5_down(1) corner_8_down(1)],[corner_5_down(2) corner_8_down(2)],'r--','Linewidth',2.5);
                         end
                         if (~check_inside_box( corner_5_down, [left_x_expan_distmap top_y_expan_distmap], [right_x_expan_distmap down_y_expan_distmap]))
-                            config_5_good=false; if (print_message_details) disp('Configuration five fails at corner 5, outside image'); end;  continue;
+                            config_3_good=false; if (print_message_details) disp('Configuration five fails at corner 5, outside image'); end;  continue;
                         end
 
                         box_corners_2d_float = [corner_1_top' corner_2_top' corner_3_top' corner_4_top' corner_5_down' corner_6_down' corner_7_down' corner_8_down']; % stack all corners for later use  2*8
@@ -663,8 +684,10 @@ for object_id = 1:size(obj_bbox_coors,1)
         end
         
         %% stack different configurations together. sort.   config1 edge distance error is already re-weighted
-        all_configs_errors = [all_configs_errors; all_configs_error_conf1_raw];
-        all_box_corners_2ds = [all_box_corners_2ds; all_box_corners_2d_conf1_raw];
+        if (consider_config_1)
+            all_configs_errors = [all_configs_errors; all_configs_error_conf1_raw];
+            all_box_corners_2ds = [all_box_corners_2ds; all_box_corners_2d_conf1_raw];
+        end
         if (consider_config_2)
             all_configs_errors = [all_configs_errors;all_configs_error_conf2_raw];
             all_box_corners_2ds = [all_box_corners_2ds;all_box_corners_2d_conf2_raw];
@@ -751,6 +774,7 @@ for object_id = 1:size(ObjectSets,1)
         all_expan_heights = extractfield(ObjectSets{object_id},'down_expand_height')';  % object 2d box height might be sampled.
         unique_height = unique(all_expan_heights);
 
+        % step one. fuse edge angle and distance error. remove some bad
         new_ObjectSets = [];
         new_obj_normalized_errors = [];
         for height_cond = 1:length(unique_height)
@@ -763,6 +787,7 @@ for object_id = 1:size(ObjectSets,1)
             new_obj_normalized_errors=[new_obj_normalized_errors;[combined_edge_angle_error hei_raw_object_errors(:,3)]];
         end
 
+        %finally rank [normalized_error   skew_error]
         if (size(new_obj_normalized_errors,1)>1)
             combined_error = new_obj_normalized_errors(:,1)+weight_skew_error*new_obj_normalized_errors(:,2);
             [sorted_error, sorted_inds] = sort(combined_error,'ascend');  % rank all proposals by ascending error
